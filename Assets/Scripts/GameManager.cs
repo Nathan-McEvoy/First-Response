@@ -1,23 +1,26 @@
 using NUnit.Framework;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class GameManager : MonoBehaviour
 {
-    private static readonly Dictionary<Severity, int> severityMultiplier = new()
-    {
-        { Severity.Minor, 1 },
-        { Severity.Major, 3 },
-    };
-
-    private int treatmentPoints = 10;
-
     public static GameManager instance;
 
+    public const int MajorsMultiplier = 15;
+    public const int MinorsMultiplier = 5;
+    public const int FailureMultiplier = 10;
+    
     public Transform patientContainer;
     public List<Patient> patients = new();
     public EquipmentType selectedEquipment;
-    public int sceneScore;
+    public ResultsPanel resultsPanel;
+    
+    public int patientsTreated;
+    public int patientsDead;
+    public int majorsTreated;
+    public int minorsTreated;
+    public int failedTreatments;
 
     void Awake()
     {
@@ -31,20 +34,16 @@ public class GameManager : MonoBehaviour
         foreach (var patient in patients)
         {
             patient.OnClicked += HandlePatientClicked;
+            patient.OnDeath += HandlePatientDeath;
         }
 
-        // Add injuries via logic once initial testing in TestScene complete:
+        // Add injuries via logic once initial testing in TestScene complete: *** Goes in Patient Spawner ?
         //patient.injuries.Add(new Injury
         //{
         //    injuryType = InjuryType.Burns,
         //    severity = Severity.Minor,
         //    escalationThreshold = 60f // explicit, not relying on the field default
         //});
-    }
-
-    void Update()
-    {
-        // pass
     }
 
     // UI Button Calls
@@ -64,25 +63,63 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void HandlePatientClicked(Patient patient)
+    // Event Handlers
+    private void HandlePatientClicked(Patient patient)
     {
-        if (selectedEquipment == EquipmentType.None)
-        {
-            return;
-        }
+        if (selectedEquipment == EquipmentType.None) return;
 
-        int score = 0;
         TreatmentResult result = patient.TryTreatInjury(selectedEquipment);
-        if (!result.resolved)
-        {
-            score -= treatmentPoints * 2;
-        }
-        else
-        {
-            score += treatmentPoints * severityMultiplier[result.severity];
-        }
 
-        sceneScore += score;
+        if (result.resolved && result.severity == Severity.Major) majorsTreated++;
+        else if (result.resolved && result.severity == Severity.Minor) minorsTreated++;
+        else failedTreatments++;
+
         selectedEquipment = EquipmentType.None;
+
+        if (patient.fullyTreated)
+        {
+            patientsTreated++;
+            CheckSceneComplete();
+        }
+    }
+
+    private void HandlePatientDeath(Patient patient)
+    {
+        patientsDead++;
+        CheckSceneComplete();
+    }
+
+    // End Scene
+    private void CheckSceneComplete()
+    {
+        if (patientsTreated + patientsDead >= patients.Count) EndScene();
+    }
+
+    private void EndScene()
+    {
+        Debug.Log($"EnS maj: {majorsTreated} | min:{minorsTreated} | fai: {failedTreatments}");
+        var result = new SceneResult
+        {
+            totalPatients = patients.Count,
+            patientsTreated = patientsTreated,
+            patientsDead = patientsDead,
+            minorsTreated = minorsTreated,
+            majorsTreated = majorsTreated,
+            failedTreatments = failedTreatments,
+        };
+        var breakdown = CalcSceneResult(result);
+        resultsPanel.Show(result, breakdown);
+        Debug.Log($"EnS PRP maj: {majorsTreated} | min:{minorsTreated} | fai: {failedTreatments}");
+    }
+
+    private int CalcSceneResult(SceneResult result)
+    {
+        int pScore = result.patientsTreated;
+        int majScore = result.majorsTreated * MajorsMultiplier;
+        int minScore = result.minorsTreated * MinorsMultiplier;
+        int failScore = result.failedTreatments * FailureMultiplier;
+        int finalScore = (majScore + minScore - failScore) * pScore;
+
+        return finalScore;
     }
 }
