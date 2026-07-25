@@ -13,8 +13,8 @@ public class GameManager : MonoBehaviour
     
     public Transform patientContainer;
     public List<Patient> patients = new();
-    public EquipmentType selectedEquipment;
     public ResultsPanel resultsPanel;
+    public PatientDetailsPanel detailsPanel;
     
     public int patientsTreated;
     public int patientsDead;
@@ -33,7 +33,8 @@ public class GameManager : MonoBehaviour
 
         foreach (var patient in patients)
         {
-            patient.OnClicked += HandlePatientClicked;
+            //patient.OnClicked += HandlePatientClicked;
+            patient.OnClicked += detailsPanel.Show;
             patient.OnDeath += HandlePatientDeath;
         }
 
@@ -46,47 +47,26 @@ public class GameManager : MonoBehaviour
         //});
     }
 
-    // UI Button Calls
-    public void SelectBandage() => SelectEquipment(EquipmentType.Bandage);
-    public void SelectCoolGel() => SelectEquipment(EquipmentType.CoolGel);
-    public void SelectNeutraliser() => SelectEquipment(EquipmentType.Neutraliser);
-
-    public void SelectEquipment(EquipmentType equipment)
+    // Event Handlers
+    private void HandlePatientDeath(Patient patient)
     {
-        if (selectedEquipment == equipment)
-        {
-            selectedEquipment = EquipmentType.None;
-        }
-        else
-        {
-            selectedEquipment = equipment;
-        }
+        patientsDead++;
+        CheckSceneComplete();
     }
 
-    // Event Handlers
-    private void HandlePatientClicked(Patient patient)
+    public void TryTreat(EquipmentType equipment, Patient patient)
     {
-        if (selectedEquipment == EquipmentType.None) return;
-
-        TreatmentResult result = patient.TryTreatInjury(selectedEquipment);
+        TreatmentResult result = patient.TryTreatInjury(equipment);
 
         if (result.resolved && result.severity == Severity.Major) majorsTreated++;
         else if (result.resolved && result.severity == Severity.Minor) minorsTreated++;
         else failedTreatments++;
-
-        selectedEquipment = EquipmentType.None;
 
         if (patient.fullyTreated)
         {
             patientsTreated++;
             CheckSceneComplete();
         }
-    }
-
-    private void HandlePatientDeath(Patient patient)
-    {
-        patientsDead++;
-        CheckSceneComplete();
     }
 
     // End Scene

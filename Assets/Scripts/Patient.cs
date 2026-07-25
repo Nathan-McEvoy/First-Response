@@ -8,13 +8,15 @@ using UnityEngine;
 public class Patient : MonoBehaviour
 {
     public bool IsDead { get; private set; }
+    public bool IsInteractable => conditions.All(c => c.resolved);
+    
     public bool fullyTreated;
-
     public float lifeTotal = 100f;
     public float currentLife;
     public List<Injury> injuries = new();
     public List<Condition> conditions = new();
     public PriorityTag priorityTag = PriorityTag.None;
+    public new String name = "Bob";
 
     public event Action<Patient> OnClicked;
     public event Action<Patient> OnDeath;
@@ -46,6 +48,11 @@ public class Patient : MonoBehaviour
         {
             Die();
         }
+    }
+
+    public String GetInjurySummary()
+    {
+        return String.Join("\n", injuries.Select(i => $"{i.injuryType} ({i.severity}) - {(i.resolved ? "Resolved" : "Active")}"));
     }
 
     public TreatmentResult TryTreatInjury(EquipmentType equipment)
