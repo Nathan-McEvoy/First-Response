@@ -13,8 +13,8 @@ public class GameManager : MonoBehaviour
     
     public Transform patientContainer;
     public List<Patient> patients = new();
-    public ResultsPanel resultsPanel;
-    public PatientDetailsPanel detailsPanel;
+    
+    public MainPanelsHandler mainPanelsHandler;
     
     public int patientsTreated;
     public int patientsDead;
@@ -33,8 +33,8 @@ public class GameManager : MonoBehaviour
 
         foreach (var patient in patients)
         {
-            //patient.OnClicked += HandlePatientClicked;
-            patient.OnClicked += detailsPanel.Show;
+            //patient.OnClicked += HandlePatientClicked;;
+            patient.OnClicked += mainPanelsHandler.ShowPatientDetails;
             patient.OnDeath += HandlePatientDeath;
         }
 
@@ -88,8 +88,7 @@ public class GameManager : MonoBehaviour
             failedTreatments = failedTreatments,
         };
         var breakdown = CalcSceneResult(result);
-        resultsPanel.Show(result, breakdown);
-        Debug.Log($"EnS PRP maj: {majorsTreated} | min:{minorsTreated} | fai: {failedTreatments}");
+        mainPanelsHandler.ShowEndPanel(result, breakdown);
     }
 
     private int CalcSceneResult(SceneResult result)

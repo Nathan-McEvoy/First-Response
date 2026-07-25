@@ -10,14 +10,8 @@ public class ResultsPanel : MonoBehaviour
     public TMP_Text pScoreText;
     public TMP_Text finalScoreText;
 
-    private void Awake()
-    {
-        gameObject.SetActive(false);
-    }
     public void Show(SceneResult result, int fScore)
     {
-        gameObject.SetActive(true);
-
         majScoreText.text = $"Major Injuries Treated ({result.majorsTreated}) x ({GameManager.MajorsMultiplier})";
         minScoreText.text = $"+ Minor Injuries Treated ({result.minorsTreated}) x ({GameManager.MinorsMultiplier})";
         failedScoreText.text = $"- Failed Treatments ({result.failedTreatments}) x ({GameManager.FailureMultiplier})";
