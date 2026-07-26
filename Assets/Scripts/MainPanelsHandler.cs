@@ -2,30 +2,35 @@ using UnityEngine;
 
 public class MainPanelsHandler : MonoBehaviour
 {
-    public static MainPanelsHandler Instance;
+    public static MainPanelsHandler Instance { get; private set; }
 
-    public GameObject patientsDetailsPanelObject;
-    public PatientDetailsPanel patientDetailsPanel;
-    public GameObject resultsPanelObject;
-    public ResultsPanel resultsPanel;
+    [SerializeField] private GameObject _patientsDetailsPanelObject;
+    [SerializeField] private PatientDetailsPanel _patientDetailsPanel;
+    [SerializeField] private GameObject _resultsPanelObject;
+    [SerializeField] private ResultsPanel _resultsPanel;
 
     private void Awake()
     {
         Instance = this;
 
-        resultsPanelObject.SetActive(false);
-        patientsDetailsPanelObject.SetActive(false);
+        _resultsPanelObject.SetActive(false);
+        _patientsDetailsPanelObject.SetActive(false);
     }
 
     public void ShowPatientDetails(Patient patient)
     {
-        patientsDetailsPanelObject.SetActive(true);
-        patientDetailsPanel.Show(patient);
+        _patientsDetailsPanelObject.SetActive(true);
+        _patientDetailsPanel.Show(patient);
     }
 
     public void ShowEndPanel(SceneResult result, int fScore)
     {
-        resultsPanelObject.SetActive(true);
-        resultsPanel.Show(result,fScore);
+        _resultsPanelObject.SetActive(true);
+        _resultsPanel.Show(result,fScore);
+    }
+
+    public void UpdatePDPHealthSlider(Patient patient)
+    {
+        _patientDetailsPanel.UpdateHealthSlider(patient);
     }
 }

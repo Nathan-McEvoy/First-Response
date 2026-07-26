@@ -1,56 +1,68 @@
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 public class GameManager : MonoBehaviour
 {
-    public static GameManager instance;
-
+    public static GameManager Instance {  get; private set; }
+    
     public const int MajorsMultiplier = 15;
     public const int MinorsMultiplier = 5;
     public const int FailureMultiplier = 10;
     
-    public Transform patientContainer;
-    public List<Patient> patients = new();
-    
-    public MainPanelsHandler mainPanelsHandler;
-    
-    public int patientsTreated;
-    public int patientsDead;
-    public int majorsTreated;
-    public int minorsTreated;
-    public int failedTreatments;
+    [SerializeField] private MainPanelsHandler mainPanelsHandler;
+    [SerializeField] private List<Patient> _patients = new();
+    [SerializeField] private PatientSpawner _patientSpawner;
+
+    private int _patientsTreated;
+    private int _patientsDead;
+    private int _majorsTreated;
+    private int _minorsTreated;
+    private int _failedTreatments;
 
     void Awake()
     {
-        instance = this;
+        Instance = this;
     }
 
-    private void Start()
+    private void Start() // move to RandomPatientGenerator
     {
-        patients.AddRange(patientContainer.GetComponentsInChildren<Patient>());
+        _patientSpawner.SpawnPatient(
+            0,
+            "Dave McGuiness",
+            new List<Injury> 
+            {
+                new(InjuryType.Burn, Severity.Minor),
+            },
+            new List<Condition> {}
+            );
 
-        foreach (var patient in patients)
-        {
-            //patient.OnClicked += HandlePatientClicked;;
-            patient.OnClicked += mainPanelsHandler.ShowPatientDetails;
-            patient.OnDeath += HandlePatientDeath;
-        }
+        _patientSpawner.SpawnPatient(
+            1,
+            "Mary Jazca",
+            new List<Injury>
+            {
+                new(InjuryType.Chemical, Severity.Minor),
+                new(InjuryType.Chemical, Severity.Major),
+            },
+            new List<Condition> { }
+            );
+    }
 
-        // Add injuries via logic once initial testing in TestScene complete: *** Goes in Patient Spawner ?
-        //patient.injuries.Add(new Injury
-        //{
-        //    injuryType = InjuryType.Burns,
-        //    severity = Severity.Minor,
-        //    escalationThreshold = 60f // explicit, not relying on the field default
-        //});
+    public void RegisterPatient(Patient patient)
+    {
+        _patients.Add(patient);
+        patient.OnClicked += mainPanelsHandler.ShowPatientDetails;
+        patient.OnDeath += HandlePatientDeath;
+        patient.HealthChanged += mainPanelsHandler.UpdatePDPHealthSlider;
     }
 
     // Event Handlers
     private void HandlePatientDeath(Patient patient)
     {
-        patientsDead++;
+        _patientsDead++;
         CheckSceneComplete();
     }
 
@@ -58,13 +70,13 @@ public class GameManager : MonoBehaviour
     {
         TreatmentResult result = patient.TryTreatInjury(equipment);
 
-        if (result.resolved && result.severity == Severity.Major) majorsTreated++;
-        else if (result.resolved && result.severity == Severity.Minor) minorsTreated++;
-        else failedTreatments++;
+        if (result.resolved && result.severity == Severity.Major) _majorsTreated++;
+        else if (result.resolved && result.severity == Severity.Minor) _minorsTreated++;
+        else _failedTreatments++;
 
-        if (patient.fullyTreated)
+        if (patient.FullyTreated)
         {
-            patientsTreated++;
+            _patientsTreated++;
             CheckSceneComplete();
         }
     }
@@ -72,23 +84,22 @@ public class GameManager : MonoBehaviour
     // End Scene
     private void CheckSceneComplete()
     {
-        if (patientsTreated + patientsDead >= patients.Count) EndScene();
+        if (_patientsTreated + _patientsDead >= _patients.Count) EndScene();
     }
 
     private void EndScene()
     {
-        Debug.Log($"EnS maj: {majorsTreated} | min:{minorsTreated} | fai: {failedTreatments}");
+        Debug.Log($"EnS maj: {_majorsTreated} | min:{_minorsTreated} | fai: {_failedTreatments}");
+        Debug.Log($"EnD pCount: {_patients.Count} | pTreat: {_patientsTreated} | pDead: {_patientsDead}");
         var result = new SceneResult
         {
-            totalPatients = patients.Count,
-            patientsTreated = patientsTreated,
-            patientsDead = patientsDead,
-            minorsTreated = minorsTreated,
-            majorsTreated = majorsTreated,
-            failedTreatments = failedTreatments,
+            patientsTreated = _patientsTreated,
+            minorsTreated = _minorsTreated,
+            majorsTreated = _majorsTreated,
+            failedTreatments = _failedTreatments,
         };
-        var breakdown = CalcSceneResult(result);
-        mainPanelsHandler.ShowEndPanel(result, breakdown);
+        var finalScore = CalcSceneResult(result);
+        mainPanelsHandler.ShowEndPanel(result, finalScore);
     }
 
     private int CalcSceneResult(SceneResult result)

@@ -7,23 +7,34 @@ using UnityEngine;
 
 public class Patient : MonoBehaviour
 {
-    public bool IsDead { get; private set; }
-    public bool IsInteractable => conditions.All(c => c.resolved);
-    
-    public bool fullyTreated;
-    public float lifeTotal = 100f;
-    public float currentLife;
-    public List<Injury> injuries = new();
-    public List<Condition> conditions = new();
-    public PriorityTag priorityTag = PriorityTag.None;
-    public new String name = "Bob";
+    [field: SerializeField] public PriorityTag PriorityTag { get; set; }
+    [field: SerializeField] public bool Analysed { get; set; }
 
+    [field: SerializeField] public bool IsDead { get; private set; }
+    [field: SerializeField] public bool FullyTreated { get; private set; }
+    [field: SerializeField] public float CurrentLife { get; private set; }
+    [field: SerializeField] public String Name { get; private set; }
+
+    public float LifeTotal { get; private set; }
+
+    public bool IsInteractable => _conditions.All(c => c.Resolved);
+    public IReadOnlyList<Injury> Injuries => _injuries;
+    
     public event Action<Patient> OnClicked;
     public event Action<Patient> OnDeath;
+    public event Action<Patient> HealthChanged;
 
-    void Start()
+    [SerializeField] private List<Injury> _injuries = new();
+    [SerializeField] private List<Condition> _conditions = new();
+    
+
+    public void Initialize(string pName, List<Injury> pInjuries, List<Condition> pConditions)
     {
-        currentLife = lifeTotal;
+        LifeTotal = 100f;
+        Name = pName;
+        _injuries.AddRange(pInjuries);
+        _conditions.AddRange(pConditions);
+        CurrentLife = LifeTotal;
     }
 
     void Update()
@@ -31,20 +42,21 @@ public class Patient : MonoBehaviour
         if (IsDead) return;
 
         float totalDrain = 0f;
-        foreach (var injury in injuries)
+        foreach (var injury in _injuries)
         {
-            if (!injury.resolved)
+            if (!injury.Resolved)
             {
                 totalDrain += injury.Tick(Time.deltaTime);
-                if (injury.causePlayerDeath)
+                if (injury.CausePlayerDeath)
                 {
                     Die();
                     break;
                 }
             }
         }
-        currentLife -= totalDrain * Time.deltaTime;
-        if (currentLife <= 0f)
+        CurrentLife -= totalDrain * Time.deltaTime;
+        HealthChanged?.Invoke(this);
+        if (CurrentLife <= 0f)
         {
             Die();
         }
@@ -52,14 +64,14 @@ public class Patient : MonoBehaviour
 
     public String GetInjurySummary()
     {
-        return String.Join("\n", injuries.Select(i => $"{i.injuryType} ({i.severity}) - {(i.resolved ? "Resolved" : "Active")}"));
+        return String.Join("\n", _injuries.Select(i => $"{i.Type} ({i.Level}) - {(i.Resolved ? "Resolved" : "Active")}"));
     }
 
     public TreatmentResult TryTreatInjury(EquipmentType equipment)
     {
-        foreach (var injury in injuries.OrderByDescending(i => i.severity))
+        foreach (var injury in _injuries.OrderByDescending(i => i.Level))
         {
-            if (injury.resolved) continue;
+            if (injury.Resolved) continue;
 
             bool resolved = injury.TryResolve(equipment);
             if (resolved)
@@ -69,8 +81,8 @@ public class Patient : MonoBehaviour
                 return new TreatmentResult
                 {
                     resolved = true,
-                    injuryType = injury.injuryType,
-                    severity = injury.severity,
+                    injuryType = injury.Type,
+                    severity = injury.Level,
                 };
             }   
         }
@@ -81,9 +93,9 @@ public class Patient : MonoBehaviour
     // Event Broadcasts
     private void CheckFullyTreated() // was broadcaster
     {
-        if (!fullyTreated && !IsDead && injuries.All(i => i.resolved))
+        if (!FullyTreated && !IsDead && _injuries.All(i => i.Resolved))
         {
-            fullyTreated = true;
+            FullyTreated = true;
             //announcedFullyTreated = true;
             //OnFullyTreated?.Invoke(this);
         }
@@ -93,7 +105,8 @@ public class Patient : MonoBehaviour
     {
         if (IsDead) return;
         IsDead = true;
-        currentLife = 0f;
+        CurrentLife = 0f;
+        HealthChanged?.Invoke(this);
         OnDeath?.Invoke(this);
     }
 

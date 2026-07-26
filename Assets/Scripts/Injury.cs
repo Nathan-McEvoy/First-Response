@@ -4,22 +4,29 @@ using UnityEngine;
 [System.Serializable]
 public class Injury
 {
-    public InjuryType injuryType;
-    public Severity severity;
-    public float timeSinceOnset;
-    public float escalationThreshold = 60f;
-    public bool resolved;
-    public bool causePlayerDeath;
+    public InjuryType Type { get; }
+    public Severity Level { get; private set; }
+    public bool Resolved { get; private set; }
+    public bool CausePlayerDeath { get; private set; }
+
+    private float _timeSinceOnset;
+    private readonly float _escalationThreshold = 60f;
+    
+    public Injury(InjuryType type, Severity level) 
+    {
+        Type = type;
+        Level = level;
+    }
 
     public float Tick(float deltaTime)
     {
-        if (resolved) return 0f;
+        if (Resolved) return 0f;
 
-        timeSinceOnset += deltaTime;
+        _timeSinceOnset += deltaTime;
 
-        if (timeSinceOnset >= escalationThreshold)
+        if (_timeSinceOnset >= _escalationThreshold)
         {
-            causePlayerDeath = Escalate();
+            CausePlayerDeath = Escalate();
         }
 
         return GetDrainRate();
@@ -27,10 +34,10 @@ public class Injury
 
     private bool Escalate()
     {
-        if (severity == Severity.Minor)
+        if (Level == Severity.Minor)
         {
-            severity = Severity.Major;
-            timeSinceOnset = 0f;
+            Level = Severity.Major;
+            _timeSinceOnset = 0f;
             return false;
         }
         else
@@ -41,7 +48,7 @@ public class Injury
 
     private float GetDrainRate()
     {
-        return severity == Severity.Major ? 2f : 0.5f;
+        return Level == Severity.Major ? 2f : 0.5f;
     }
 
     // Resolution
@@ -49,7 +56,7 @@ public class Injury
     {
         if (Matches(equipment))
         {
-            resolved = true;
+            Resolved = true;
             return true;
         }
         return false;
@@ -58,9 +65,9 @@ public class Injury
     public bool Matches(EquipmentType equipment)
     {
         return (
-            equipment == EquipmentType.Bandage && injuryType == InjuryType.Trauma ||
-            equipment == EquipmentType.CoolGel && injuryType == InjuryType.Burn ||
-            equipment == EquipmentType.Neutraliser && injuryType == InjuryType.Chemical
+            equipment == EquipmentType.Bandage && Type == InjuryType.Trauma ||
+            equipment == EquipmentType.CoolGel && Type == InjuryType.Burn ||
+            equipment == EquipmentType.Neutraliser && Type == InjuryType.Chemical
             );
     }
 
