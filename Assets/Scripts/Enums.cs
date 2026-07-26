@@ -34,7 +34,7 @@ public enum EquipmentType
     Bandage,
     CoolGel,
     Neutraliser,
-    Extractor,
+    Extracator,
     Water,
     RubberGloves
 }

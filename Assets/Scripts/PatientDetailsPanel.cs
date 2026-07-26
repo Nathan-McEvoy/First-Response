@@ -1,4 +1,7 @@
 using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -13,12 +16,21 @@ public class PatientDetailsPanel : MonoBehaviour
     [SerializeField] private GameObject _triageSubPanel;
     [SerializeField] private GameObject _treatSubPanel;
     [SerializeField] private GameObject _patientHealthBar;
+    [SerializeField] private GameObject conditionIconPrefab;
     [SerializeField] private TMP_Text _patientNameText;
     [SerializeField] private TMP_Text _injuryDetailsText;
+    [SerializeField] private Transform conditionIconContainer;
+    [SerializeField] private List<ConditionIconEntry> _conditionIcons;
     [SerializeField] private UnityEngine.UI.Slider _patientHealthSlider;
+
+    private Dictionary<ConditionType, Sprite> _conditionIconLookup;
 
     private Patient currentPatient;
     
+    void Awake()
+    {
+        _conditionIconLookup = _conditionIcons.ToDictionary(e => e.type, e => e.icon);
+    }
 
     public void Show(Patient patient)
     {
@@ -35,9 +47,28 @@ public class PatientDetailsPanel : MonoBehaviour
 
         _patientNameText.text = patient.Name;
 
+        if (blocked)
+        {
+            DisplayConditionIcons(patient);
+        }
         if (patient.Analysed) BuildInjurySummary();
     }
 
+    private void DisplayConditionIcons(Patient patient)
+    {
+        foreach (Transform child in conditionIconContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        foreach (var condition in patient.Conditions)
+        {
+            if (condition.Resolved) continue;
+
+            GameObject iconGO = Instantiate(conditionIconPrefab, conditionIconContainer);
+            iconGO.GetComponent<UnityEngine.UI.Image>().sprite = _conditionIconLookup[condition.Type];
+        }
+    }
     private void BuildInjurySummary()
         {
         _injuryDetailsText.text = currentPatient.GetInjurySummary();
@@ -55,7 +86,8 @@ public class PatientDetailsPanel : MonoBehaviour
         _patientHealthSlider.value = NormaliseHealth();
     }
 
-    // Button Event Handlers
+    // Button Event Handlers //
+    // Analyse Button
     public void OnAnalysedPressed()
     {
         if (currentPatient == null || !currentPatient.IsInteractable) return;
@@ -65,23 +97,34 @@ public class PatientDetailsPanel : MonoBehaviour
         _patientHealthBar.SetActive(true);
     }
 
+    // Sub-Panel Buttons
     public void OnTriagePressed() => _triageSubPanel.SetActive(!_triageSubPanel.activeSelf);
     public void OnTreatPressed() => _treatSubPanel.SetActive(!_treatSubPanel.activeSelf);
 
-    public void OnBandagePressed()
+    // Treat Injury Buttons
+    public void OnBandagePressed() => OnTreatInjuryPressed(EquipmentType.Bandage);
+    public void OnCoolGelPressed() => OnTreatInjuryPressed(EquipmentType.CoolGel);
+    public void OnNeutraliserPressed() => OnTreatInjuryPressed(EquipmentType.Neutraliser);
+
+    private void OnTreatInjuryPressed(EquipmentType type)
     {
-        GameManager.Instance.TryTreat(EquipmentType.Bandage, currentPatient);
+        GameManager.Instance.TryTreat(type, currentPatient);
         BuildInjurySummary();
     }
-    
-    public void OnCoolGelPressed()
+
+    // Treat Condition Buttons
+    public void OnWaterPressed() => OnTreatConditionPressed(EquipmentType.Water);
+    public void OnExtracatorPressed() => OnTreatConditionPressed(EquipmentType.Extracator);
+    public void OnRubberGlovesPressed() => OnTreatConditionPressed(EquipmentType.RubberGloves);
+
+    private void OnTreatConditionPressed(EquipmentType type)
     {
-        GameManager.Instance.TryTreat(EquipmentType.CoolGel, currentPatient);
-        BuildInjurySummary();
-    }
-    public void OnNeutraliserPressed()
-    {
-        GameManager.Instance.TryTreat(EquipmentType.Neutraliser, currentPatient);
-        BuildInjurySummary();
+        GameManager.Instance.TryResolveCondition(type, currentPatient);
+        DisplayConditionIcons(currentPatient);
+
+        if (currentPatient.IsInteractable)
+        {
+            _blockedPanel.SetActive(false);
+        }
     }
 }

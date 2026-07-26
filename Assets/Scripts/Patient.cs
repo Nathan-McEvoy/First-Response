@@ -11,22 +11,38 @@ public class Patient : MonoBehaviour
     [field: SerializeField] public bool Analysed { get; set; }
 
     [field: SerializeField] public bool IsDead { get; private set; }
-    [field: SerializeField] public bool FullyTreated { get; private set; }
     [field: SerializeField] public float CurrentLife { get; private set; }
     [field: SerializeField] public String Name { get; private set; }
 
     public float LifeTotal { get; private set; }
 
+    public bool IsFullyTreated => _injuries.All(i => i.Resolved);
     public bool IsInteractable => _conditions.All(c => c.Resolved);
     public IReadOnlyList<Injury> Injuries => _injuries;
-    
+    public IReadOnlyList<Condition> Conditions => _conditions;
+
     public event Action<Patient> OnClicked;
     public event Action<Patient> OnDeath;
     public event Action<Patient> HealthChanged;
 
     [SerializeField] private List<Injury> _injuries = new();
     [SerializeField] private List<Condition> _conditions = new();
-    
+
+    [SerializeField] private GameObject _sparks;
+    [SerializeField] private GameObject _flames;
+    [SerializeField] private GameObject _rocks;
+
+    private Dictionary<ConditionType, GameObject> _conditionVisuals;
+
+    void Awake()
+    {
+        _conditionVisuals = new Dictionary<ConditionType, GameObject>
+        {
+            { ConditionType.OnFire, _flames },
+            { ConditionType.Electrocuted, _sparks },
+            { ConditionType.Trapped, _rocks }
+        };
+    }
 
     public void Initialize(string pName, List<Injury> pInjuries, List<Condition> pConditions)
     {
@@ -35,6 +51,11 @@ public class Patient : MonoBehaviour
         _injuries.AddRange(pInjuries);
         _conditions.AddRange(pConditions);
         CurrentLife = LifeTotal;
+
+        foreach (var condition in _conditions)
+        {
+            SetConditionVisual(condition.Type, true);
+        }
     }
 
     void Update()
@@ -64,20 +85,21 @@ public class Patient : MonoBehaviour
 
     public String GetInjurySummary()
     {
+        if (!IsInteractable) return "Conditions are blocking analysis!";
+
         return String.Join("\n", _injuries.Select(i => $"{i.Type} ({i.Level}) - {(i.Resolved ? "Resolved" : "Active")}"));
     }
 
     public TreatmentResult TryTreatInjury(EquipmentType equipment)
     {
+        if (!IsInteractable) return TreatmentResult.Failed;
+
         foreach (var injury in _injuries.OrderByDescending(i => i.Level))
         {
             if (injury.Resolved) continue;
 
-            bool resolved = injury.TryResolve(equipment);
-            if (resolved)
+            if (injury.TryResolve(equipment))
             {
-                CheckFullyTreated();
-
                 return new TreatmentResult
                 {
                     resolved = true,
@@ -90,17 +112,30 @@ public class Patient : MonoBehaviour
         return TreatmentResult.Failed;
     }
 
-    // Event Broadcasts
-    private void CheckFullyTreated() // was broadcaster
+    public bool TryTreatCondition(EquipmentType equipment)
     {
-        if (!FullyTreated && !IsDead && _injuries.All(i => i.Resolved))
+        foreach (var condition in _conditions)
         {
-            FullyTreated = true;
-            //announcedFullyTreated = true;
-            //OnFullyTreated?.Invoke(this);
+            if (condition.Resolved) continue;
+
+            if (condition.TryResolve(equipment)) 
+            {
+                SetConditionVisual(condition.Type, false);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void SetConditionVisual(ConditionType type, bool active)
+    {
+        if (_conditionVisuals.TryGetValue(type, out GameObject visual))
+        {
+            visual.SetActive(active);
         }
     }
 
+    // Event Broadcasts
     private void Die()
     {
         if (IsDead) return;

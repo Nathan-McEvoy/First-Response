@@ -10,4 +10,24 @@ public class Condition
     {
         Type = type;
     }
+
+    // Resolution
+    public bool TryResolve(EquipmentType equipment)
+    {
+        if (Matches(equipment))
+        {
+            Resolved = true;
+            return true;
+        }
+        return false;
+    }
+
+    public bool Matches(EquipmentType equipment)
+    {
+        return (
+            equipment == EquipmentType.Extracator && Type == ConditionType.Trapped ||
+            equipment == EquipmentType.Water && Type == ConditionType.OnFire ||
+            equipment == EquipmentType.RubberGloves && Type == ConditionType.Electrocuted
+            );
+    }
 }

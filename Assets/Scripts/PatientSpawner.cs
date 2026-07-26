@@ -9,7 +9,7 @@ public class PatientSpawner : MonoBehaviour
     [SerializeField] private Transform[] spawnPoints;
 
     public void SpawnPatient(int spawnIndex, string name, List<Injury> injuries, List<Condition> conditions)
-    {
+    { // this should handle indexing if none given
         Vector2 position = spawnPoints[spawnIndex].position;
         GameObject patientGO = Instantiate(patientPrefab, position, Quaternion.identity, patientContainer);
         

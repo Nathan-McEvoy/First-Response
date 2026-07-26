@@ -21,6 +21,8 @@ public class GameManager : MonoBehaviour
     private int _majorsTreated;
     private int _minorsTreated;
     private int _failedTreatments;
+    private int _conditionsRemoved;
+    private int _conditionRemFailed;
 
     void Awake()
     {
@@ -36,7 +38,12 @@ public class GameManager : MonoBehaviour
             {
                 new(InjuryType.Burn, Severity.Minor),
             },
-            new List<Condition> {}
+            new List<Condition>
+            {
+                new(ConditionType.OnFire),
+                new(ConditionType.Trapped),
+                new(ConditionType.Electrocuted),
+            }
             );
 
         _patientSpawner.SpawnPatient(
@@ -47,7 +54,23 @@ public class GameManager : MonoBehaviour
                 new(InjuryType.Chemical, Severity.Minor),
                 new(InjuryType.Chemical, Severity.Major),
             },
-            new List<Condition> { }
+            new List<Condition> 
+            {
+                new(ConditionType.Trapped),
+            }
+            );
+
+        _patientSpawner.SpawnPatient(
+            2,
+            "Gabby Munchkin",
+            new List<Injury>
+            {
+                new(InjuryType.Trauma, Severity.Minor),
+            },
+            new List<Condition>
+            {
+                new(ConditionType.Electrocuted),
+            }
             );
     }
 
@@ -74,11 +97,19 @@ public class GameManager : MonoBehaviour
         else if (result.resolved && result.severity == Severity.Minor) _minorsTreated++;
         else _failedTreatments++;
 
-        if (patient.FullyTreated)
+        if (patient.IsFullyTreated)
         {
             _patientsTreated++;
             CheckSceneComplete();
         }
+    }
+
+    public void TryResolveCondition(EquipmentType equipment, Patient patient)
+    {
+        bool result = patient.TryTreatCondition(equipment);
+
+        if (result) _conditionsRemoved++;
+        else _conditionRemFailed++;
     }
 
     // End Scene
